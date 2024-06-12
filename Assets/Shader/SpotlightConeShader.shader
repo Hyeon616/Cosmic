@@ -1,19 +1,18 @@
-Shader "Custom/DarkenShader"
+Shader "Custom/SpotlightConeShader"
 {
     Properties
     {
         _MainTex ("Texture", 2D) = "white" {}
-        _LightTex ("Light Texture", 2D) = "black" {} // This texture will store the light effect
-        _DarkColor ("Dark Color", Color) = (0, 0, 0, 1)
+        _Color ("Color", Color) = (1, 0.87, 0.73, 0.5) // 더 투명한 노란색과 알파값 설정
+        _Intensity ("Intensity", Float) = 1.0
     }
     SubShader
     {
-        Tags { "RenderType"="Opaque" }
+        Tags { "Queue"="Transparent" }
         Pass
         {
             ZWrite Off
             Blend SrcAlpha OneMinusSrcAlpha
-            ColorMask RGB
 
             CGPROGRAM
             #pragma vertex vert
@@ -28,13 +27,13 @@ Shader "Custom/DarkenShader"
 
             struct v2f
             {
-                float4 vertex : SV_POSITION;
                 float2 uv : TEXCOORD0;
+                float4 vertex : SV_POSITION;
             };
 
             sampler2D _MainTex;
-            sampler2D _LightTex;
-            fixed4 _DarkColor;
+            fixed4 _Color;
+            float _Intensity;
 
             v2f vert(appdata_t v)
             {
@@ -47,8 +46,11 @@ Shader "Custom/DarkenShader"
             fixed4 frag(v2f i) : SV_Target
             {
                 fixed4 col = tex2D(_MainTex, i.uv);
-                fixed4 lightCol = tex2D(_LightTex, i.uv);
-                return col * lightCol + _DarkColor * (1 - lightCol.a);
+                // 빛의 중심에서 가장자리로 갈수록 투명해지는 효과 적용
+                float alpha = (1.0 - i.uv.y) * _Color.a * _Intensity * 0.5; // 투명도를 더 강하게 적용
+                col.rgb = lerp(col.rgb, _Color.rgb, _Intensity);
+                col.a *= alpha;
+                return col;
             }
             ENDCG
         }
